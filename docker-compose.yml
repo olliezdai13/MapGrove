@@ -1,0 +1,9 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mapgrove-app
+    volumes:
+      - .:/app
+    command: python PythonCode/main.py
