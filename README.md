@@ -28,3 +28,21 @@ Hardware & Wiring:
 
 
 0: Default. 1: High-G event detected. 2: Manually aborted event.
+
+## Running the Data Loader
+
+The Python data loader in `PythonCode/data_loader.py` reads the CSV logs in `Data/` and prints summary statistics for each column.
+
+### Run Locally
+1. Ensure you have Python 3.11+ and pip installed.
+2. (Recommended) Create and activate a virtual environment.
+3. Install dependencies: `pip install -r requirements.txt`
+4. Execute the script: `python3 PythonCode/data_loader.py`
+
+### Run with Docker
+1. Build the image: `docker build -t mapgrove .`
+2. Run the container: `docker run --rm -v "$(pwd)":/app mapgrove`
+
+### Run with Docker Compose
+1. Build and start: `docker compose up --build`
+2. Stop when finished: `docker compose down`

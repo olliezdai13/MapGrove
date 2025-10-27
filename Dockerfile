@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Command to run your app (adjust as needed)
-CMD ["python", "PythonCode/main.py"]
+CMD ["python", "PythonCode/data_loader.py"]

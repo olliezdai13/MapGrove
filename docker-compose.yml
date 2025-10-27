@@ -6,4 +6,4 @@ services:
     container_name: mapgrove-app
     volumes:
       - .:/app
-    command: python PythonCode/main.py
+    command: python PythonCode/data_loader.py
