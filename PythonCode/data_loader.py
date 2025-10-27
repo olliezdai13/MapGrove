@@ -4,6 +4,8 @@ import csv
 from pathlib import Path
 from typing import Dict, List
 
+from data_visualizer import plot_columns
+
 
 COLUMN_NAMES = [
     "Timestamp",
@@ -46,6 +48,8 @@ def load_columns(csv_path: Path) -> Dict[str, List[float]]:
                 else:
                     columns[column].append(float(value))
 
+    columns["PlantStat50"] = [plant_stat * 50.0 for plant_stat in columns["PlantStat"]]
+
     return columns
 
 
@@ -54,16 +58,26 @@ def main() -> None:
         Path("Data") / "datalog_github1.csv",
         Path("Data") / "datalog_github2.csv",
     ]
+    plots_dir = Path("plots")
 
     for csv_path in data_files:
         columns = load_columns(csv_path)
         print(f"File: {csv_path}")
-        for column_name in COLUMN_NAMES:
+        for column_name in [*COLUMN_NAMES, "PlantStat50"]:
             values = columns[column_name]
             sample = ", ".join(str(v) for v in values[:5])
             suffix = "..." if len(values) > 5 else ""
             print(f"  {column_name} ({len(values)} values): [{sample}{suffix}]")
         print()
+
+        print("PLOTTING")
+        plot_columns(
+            columns,
+            selected_columns=["AccX_G", "AccY_G", "AccZ_G", "PlantStat"],
+            title=f"{csv_path.name} Sensor Data",
+            output_path=plots_dir / f"{csv_path.stem}_sensor_plot.png",
+        )
+        print("DONE PLOTTING")
 
 
 if __name__ == "__main__":
