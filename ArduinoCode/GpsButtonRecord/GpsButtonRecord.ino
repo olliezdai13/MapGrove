@@ -1,12 +1,11 @@
 #include <SoftwareSerial.h>
 #include <TinyGPSPlus.h>
 
-// Adjust pins to match the wires from the GPS module (GPS TX -> GPS_RX_PIN).
-const uint8_t GPS_RX_PIN = 4;  // Arduino pin receiving data from GPS
-const uint8_t GPS_TX_PIN = 5;  // Arduino pin sending data to GPS (rarely used)
-const uint8_t BUTTON_PIN = 2;  // Button input (active LOW with pull-up)
+// GPS wiring: module TX -> GPS_RX_PIN, module RX -> GPS_TX_PIN
+const uint8_t GPS_RX_PIN = 4;
+const uint8_t GPS_TX_PIN = 5;
+const uint8_t BUTTON_PIN = 2;  // Expects HIGH when pressed
 const unsigned long GPS_BAUD = 9600;
-const unsigned long LOG_PERIOD_MS = 250UL;
 
 SoftwareSerial gpsSerial(GPS_RX_PIN, GPS_TX_PIN);
 TinyGPSPlus gps;
@@ -19,31 +18,25 @@ struct GpsSnapshot {
   unsigned long fixMillis;
 };
 
-struct ButtonSnapshot {
-  bool pressed;
-  unsigned long sampleMillis;
-};
-
 static GpsSnapshot lastGps = {false, 0.0, 0.0, 0, 0};
-static ButtonSnapshot lastButton = {false, 0};
-static unsigned long lastLogMillis = 0;
 static bool headerPrinted = false;
+static bool lastButtonHigh = false;
+
 void feedGpsStream();
 void updateGpsSnapshot();
-void pollButton(const unsigned long now);
-void logCurrentState(const unsigned long now);
+void maybeLogButtonPress();
+void logCurrentState(const unsigned long pressedAtMillis);
 
 void setup() {
   Serial.begin(GPS_BAUD);
+#if defined(USBCON)
   while (!Serial) {
     ;  // Wait for Serial Monitor (for boards with native USB)
   }
-
+#endif
   pinMode(BUTTON_PIN, INPUT_PULLUP);
 
-  lastButton.pressed = (digitalRead(BUTTON_PIN) == LOW);
-  lastButton.sampleMillis = millis();
-  lastLogMillis = lastButton.sampleMillis;
+  lastButtonHigh = (digitalRead(BUTTON_PIN) == HIGH);
 
   gpsSerial.begin(GPS_BAUD);
 }
@@ -51,13 +44,7 @@ void setup() {
 void loop() {
   feedGpsStream();
   updateGpsSnapshot();
-
-  const unsigned long now = millis();
-  if (now - lastLogMillis >= LOG_PERIOD_MS) {
-    lastLogMillis = now;
-    pollButton(now);
-    logCurrentState(now);
-  }
+  maybeLogButtonPress();
 }
 
 void feedGpsStream() {
@@ -79,12 +66,15 @@ void updateGpsSnapshot() {
   }
 }
 
-void pollButton(const unsigned long now) {
-  lastButton.pressed = (digitalRead(BUTTON_PIN) == LOW);
-  lastButton.sampleMillis = now;
+void maybeLogButtonPress() {
+  const bool nowHigh = (digitalRead(BUTTON_PIN) == HIGH);
+  if (!lastButtonHigh && nowHigh) {  // rising edge
+    logCurrentState(millis());
+  }
+  lastButtonHigh = nowHigh;
 }
 
-void logCurrentState(const unsigned long now) {
+void logCurrentState(const unsigned long pressedAtMillis) {
   if (!headerPrinted) {
     Serial.println(F("button,gps_lon,gps_lat,gps_lock,timestamp_ms"));
     headerPrinted = true;
@@ -96,7 +86,7 @@ void logCurrentState(const unsigned long now) {
   const double logLat = haveFix ? lastGps.lat : 0.0;
   const double logLng = haveFix ? lastGps.lng : 0.0;
 
-  Serial.print(lastButton.pressed ? 1 : 0);
+  Serial.print(1);
   Serial.print(',');
   Serial.print(logLng, 6);
   Serial.print(',');
@@ -104,5 +94,5 @@ void logCurrentState(const unsigned long now) {
   Serial.print(',');
   Serial.print(gpsCurrentlyLocked ? 1 : 0);
   Serial.print(',');
-  Serial.println(now);
+  Serial.println(pressedAtMillis);
 }
